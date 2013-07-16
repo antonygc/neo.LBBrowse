@@ -7,58 +7,72 @@ function is_array(object){
 	return Array.prototype.isPrototypeOf(object);
 }
 
-function to_table(data){
+function editable_anchor(id, text){
+	var anchor = document.createElement('a');
+	anchor.setAttribute('id', id);
+	anchor.setAttribute('href', '');
+	anchor.setAttribute('data-type', 'text');
+	anchor.setAttribute('data-pk', '1');
+	anchor.setAttribute('data-original-title', 'Enter data');
+	anchor.setAttribute('class','editable editable-click');
+	anchor.setAttribute('style', 'display: inline; background-color: rgba(0, 0, 0, 0);');
+	anchor.innerText = text;
+	return anchor
+}
+
+function to_table(id, data){
 
 	// INIT ELEMENT VARIABLES
+	var div = document.createElement('div');
 	var table = document.createElement('table');
 	var thead = document.createElement('thead');
 	var tbody = document.createElement('tbody');
 	var thead_tr = document.createElement('tr');
 	var body_tr = document.createElement('tr');
 	var field;
+	var field_id;
 	var thead_td;
 	var body_td;
+	var anchor;
 	var bold;
+	var obj
+	id = id.toString().replace(/\./g,'-'); 
 
 	// BUILD TABLE INNER ELEMENTS
 	for (field in data){
-		if (is_dict(data[field])){
-			continue;
-		}
+		if (is_dict(data[field])) continue;
+
+		// THEAD 
 		thead_td = document.createElement('td');
 		bold = document.createElement('b');
 		bold.innerText = field;
 		thead_td.appendChild(bold);
 		thead_tr.appendChild(thead_td);
+
+		// BODY
+		field_id = id + '-' + field;
+		anchor = editable_anchor(field_id, data[field])
 		body_td = document.createElement('td');
-		body_td.innerText = data[field];
+		body_td.appendChild(anchor);
 		body_tr.appendChild(body_td);
+
+		// PATH:VALUE OBJECT 
+		REGISTRY.push(field_id)
 	}
 
 	//APPEND TABLE CHILD ELEMENTS
+	div.setAttribute('style', 'overflow:auto');
+	table.setAttribute('id', id);
 	table.setAttribute('class', 'table table-condensed table-hover');
 	thead.appendChild(thead_tr);
 	tbody.appendChild(body_tr);
 	table.appendChild(thead);
 	table.appendChild(tbody);
-	return table 
+	div.appendChild(table);
+
+	return div
 }
 
-function accordion_group(id, text, content){
-
-	// HEAD STUFF
-	var toggle = new AccordionToggle(id, text);
-	var head = new AccordionHead(toggle);
-
-	// BODY STUFF
-	var inner = new AccordionInner(content);
-	var body = new AccordionBody(id, inner);
-
-	// APPEND ACCORDION STUFF
-	var group = new AccordionGroup(head, body);
-
-	return group;
-}
 
 function Field(level, path, name, value){
 
@@ -87,26 +101,18 @@ function Field(level, path, name, value){
 	}
 }
 
-function MultiSingleField(){
-	// {"field":["value1","value2"]}
-		
-}
-
-function MultiCompoundField(){
-	// {"field":[{"field1":"value1", "field2":"value"}]}
-
-}
 
 function log(msg){
 	console.log(msg);
 }
 
-function RegistryView(id, data, root){
+
+function RegistryView(id, data){
 
 	this.id = id
 	this.data = data
 	this.accordion = new Accordion(id);
-	this.root = root || '__root__';
+	this.root = id || '__root__';
 
 	this.get_overview = function(){
 
@@ -187,15 +193,19 @@ function RegistryView(id, data, root){
 		var further_accordion;
 		var field;
 		var field_id;
+		var multi;
 		
 		for (field in this.overview[LEVEL]){
 			if (field in this.overview[LEVEL+1]){
+
 				field_id = this.overview[LEVEL][field].path;
+				multi = this.overview[LEVEL][field].is_multivalued();
 
 				further_accordion = this.further_accordion(
 					field_id, 
 					field, 
-					this.overview[LEVEL + 1]
+					this.overview[LEVEL + 1],
+					multi
 					);
 
 				contents.push(further_accordion);
@@ -204,18 +214,18 @@ function RegistryView(id, data, root){
 		}
 
 		object = this.to_object(this.overview[LEVEL], first_level=true);
-		content = to_table(object);
+		content = to_table(this.id, object);
 		contents.push(content);
 
 		group_id = this.id;
-		group_text = 'ID: ' + this.id;
+		group_text = 'ID: [' + this.id + ']';
 		group = accordion_group(group_id, group_text, contents.reverse());
 		this.accordion.accordion.appendChild(group.group);
 
 		return this.accordion.accordion;
 	}
 
-	this.further_accordion = function(id, field, view){
+	this.further_accordion = function(id, field, view, multi){
 
 		var _field;
 		var _field_name;
@@ -226,6 +236,7 @@ function RegistryView(id, data, root){
 		var further_accordion;
 		var LEVEL;
 		var accordion = new Accordion(id);
+
 
 		for (_field in view[field]){
 			if (view[field][_field].has_children){
@@ -246,7 +257,7 @@ function RegistryView(id, data, root){
 		}
 
 		object = this.to_object(view[field]);
-		content = to_table(object);
+		content = to_table(id, object);
 		contents.push(content);
 
 		group_id = id;
@@ -260,7 +271,7 @@ function RegistryView(id, data, root){
 	this.to_object = function(view, first_level){
 
 		var field;
-		var new_view = new Object;
+		var new_view = new Object();
 
 		if (first_level){
 			for (field in view){
@@ -280,4 +291,3 @@ function RegistryView(id, data, root){
 
 
 }
-

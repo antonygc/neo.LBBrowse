@@ -1,4 +1,7 @@
 
+var REGISTRY = new Array()
+
+
 function AccordionInner(content){
 
     	// <div class="accordion-inner"> [content] </div>
@@ -27,12 +30,38 @@ function AccordionBody(id, inner){
 	this.body = body;
 }
 
+function to_path(matches, text){
+	if (!matches) return text;
+	var match;
+
+	for (i in matches){
+		match = '[' + matches[i] + ']';
+		match = match.replace(/\./g, '');
+		text = text.replace(matches[i], match + '.');
+	}
+
+	if (text[text.length-1] == '.'){
+		var re = /.$/;
+		text = text.replace(re, "");
+	}
+	return text;
+}
+
 function AccordionToggle(id, text){
 
 	// <a class="accordion-toggle" href="[href]" data-toggle="collapse" 
 	// data-parent="[data_parent]"> [text] </a>
 	var href = '#' + id.toString().replace(/\./g,'-') + '-collapse';
 	var data_parent = '#' + id; 
+
+	var pattern = /([.])+([0-9])+/g;
+	var matches = text.match(pattern);
+	var text = to_path(matches, text);
+
+	pattern = /([0-9])+([.])+/g;
+	matches = text.match(pattern);
+	text = to_path(matches, text);
+
 	var toggle = document.createElement('a');
 
 	toggle.setAttribute('class', 'accordion-toggle');
@@ -81,4 +110,20 @@ function Accordion(id){
 	accordion.setAttribute('id', id.toString().replace(/\./g,'-') + '-accordion');
 
 	this.accordion = accordion;
+}
+
+function accordion_group(id, text, content){
+
+	// HEAD STUFF
+	var toggle = new AccordionToggle(id, text);
+	var head = new AccordionHead(toggle);
+
+	// BODY STUFF
+	var inner = new AccordionInner(content);
+	var body = new AccordionBody(id, inner);
+
+	// APPEND ACCORDION STUFF
+	var group = new AccordionGroup(head, body);
+
+	return group;
 }
